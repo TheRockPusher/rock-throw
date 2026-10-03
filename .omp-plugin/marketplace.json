@@ -1,0 +1,13 @@
+{
+  "name": "rock-throw",
+  "owner": { "name": "rock-throw" },
+  "metadata": { "description": "Personal OMP skill collection" },
+  "plugins": [
+    {
+      "name": "rock-throw",
+      "source": "./",
+      "version": "0.1.0",
+      "description": "Personal OMP skills (user-invoked by default)"
+    }
+  ]
+}

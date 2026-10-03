@@ -1,0 +1,223 @@
+<!-- Derived from Anthropic skill-creator (Apache-2.0); modified for OMP. -->
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Trigger evaluation editor</title>
+    <style>
+      body {
+        font-family:
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif;
+        max-width: 1100px;
+        margin: 30px auto;
+        padding: 0 24px;
+        background: #f5f6f8;
+        color: #202630;
+      }
+      section {
+        background: white;
+        padding: 20px;
+        border: 1px solid #dce0e6;
+        border-radius: 8px;
+        margin: 16px 0;
+      }
+      textarea {
+        font: inherit;
+        width: 100%;
+        min-height: 90px;
+        box-sizing: border-box;
+        padding: 10px;
+      }
+      button,
+      select {
+        font: inherit;
+        padding: 8px 12px;
+        border: 1px solid #aab2bd;
+        border-radius: 5px;
+        background: white;
+        cursor: pointer;
+      }
+      nav {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+      pre {
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+      }
+      .rowhead {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        margin-bottom: 10px;
+      }
+      .error {
+        color: #a22;
+      }
+      #status {
+        display: block;
+        margin: 15px 0;
+      }
+    </style>
+  </head>
+  <body>
+    <h1 id="title"></h1>
+    <p>
+      Edit realistic requests and whether this skill should be consulted. The description below is
+      the authored description; OMP may route using a shorter preview or compressed hint.
+    </p>
+    <section>
+      <h2>Description</h2>
+      <pre id="description"></pre>
+    </section>
+    <nav>
+      <button id="add">Add query</button><button id="save">Save trigger evals</button
+      ><button id="export">Export JSON</button><button id="reload">Reload saved data</button>
+    </nav>
+    <span id="status" role="status"></span>
+    <div id="rows"></div>
+    <p>Return to your OMP session and tell the agent you're done.</p>
+    <script>
+      const DATA = /*__DATA__*/;
+      const $ = (id) => document.getElementById(id);
+      const el = (tag, text, parent) => {
+        const node = document.createElement(tag);
+        if (text !== undefined) node.textContent = text;
+        if (parent) parent.append(node);
+        return node;
+      };
+      let items = DATA.evals.map((item) => ({ ...item })),
+        saving = false;
+      $("title").textContent = `${DATA.skill_name} — trigger evaluation editor`;
+      $("description").textContent = DATA.description;
+      function render() {
+        const parent = $("rows");
+        parent.replaceChildren();
+        items.forEach((item, index) => {
+          const section = el("section", undefined, parent),
+            header = el("div", undefined, section);
+          header.className = "rowhead";
+          el("strong", `Query ${item.id}`, header);
+          const select = el("select", undefined, header);
+          for (const [value, label] of [
+            ["true", "Should trigger"],
+            ["false", "Should NOT trigger"],
+          ]) {
+            const option = el("option", label, select);
+            option.value = value;
+          }
+          select.value = String(item.should_trigger);
+          select.onchange = () => {
+            item.should_trigger = select.value === "true";
+            dirty();
+          };
+          const remove = el("button", "Remove", header);
+          remove.onclick = () => {
+            items.splice(index, 1);
+            render();
+            dirty();
+          };
+          const query = el("textarea", undefined, section);
+          query.value = item.query;
+          query.setAttribute("aria-label", `Query ${item.id}`);
+          query.oninput = () => {
+            item.query = query.value;
+            dirty();
+          };
+        });
+      }
+      function dirty() {
+        $("status").textContent = "Unsaved changes — save or export JSON.";
+      }
+      function validate() {
+        const ids = new Set(),
+          labels = new Map();
+        for (const item of items) {
+          if (!Number.isInteger(item.id) || ids.has(item.id))
+            throw new Error("IDs must be unique integers.");
+          ids.add(item.id);
+          if (!item.query.trim()) throw new Error(`Query ${item.id} is empty.`);
+          if (labels.has(item.query) && labels.get(item.query) !== item.should_trigger)
+            throw new Error("Duplicate queries have conflicting labels.");
+          labels.set(item.query, item.should_trigger);
+        }
+        return items.map((item) => ({ ...item }));
+      }
+      function exportJSON(value) {
+        const url = URL.createObjectURL(
+          new Blob([JSON.stringify(value, null, 2) + "\n"], { type: "application/json" }),
+        );
+        const a = el("a");
+        a.href = url;
+        a.download = "trigger-evals.json";
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      }
+      $("add").onclick = () => {
+        items.push({
+          id: Math.max(0, ...items.map((i) => i.id)) + 1,
+          query: "",
+          should_trigger: true,
+        });
+        render();
+        dirty();
+      };
+      $("export").onclick = () => {
+        try {
+          exportJSON(validate());
+          $("status").textContent =
+            "Exported trigger-evals.json. Save it to the skill’s evals directory.";
+        } catch (error) {
+          $("status").textContent = error.message;
+        }
+      };
+      $("save").onclick = async () => {
+        if (saving) return;
+        try {
+          const value = validate();
+          if (DATA.static) {
+            exportJSON(value);
+            $("status").textContent =
+              "Exported trigger-evals.json; static mode cannot write to disk.";
+            return;
+          }
+          saving = true;
+          $("save").disabled = true;
+          $("status").textContent = "Saving…";
+          const response = await fetch("/api/trigger-evals", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(value),
+          });
+          if (!response.ok) throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+          $("status").textContent = "Saved. Later edits must be saved again.";
+        } catch (error) {
+          $("status").textContent = `Save failed: ${error.message}. Export JSON as a fallback.`;
+        } finally {
+          saving = false;
+          $("save").disabled = false;
+        }
+      };
+      $("reload").disabled = DATA.static;
+      $("reload").onclick = async () => {
+        try {
+          const response = await fetch("/api/trigger-evals");
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          items = await response.json();
+          render();
+          $("status").textContent = "Loaded saved trigger evals.";
+        } catch (error) {
+          $("status").textContent = `Reload failed: ${error.message}`;
+        }
+      };
+      render();
+      if (DATA.static) $("status").textContent = "Static mode: Export JSON to persist edits.";
+    </script>
+  </body>
+</html>
