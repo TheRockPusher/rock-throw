@@ -21,15 +21,15 @@ A personal skill collection, packaged as an [Oh My Pi](https://github.com/can135
 The repo is an OMP extension package: `package.json` contains `"omp": {}`, and OMP picks up the `skills/` directory next to it.
 
 ```sh
-# Try it without installing (this session only)
-omp -e /home/work/projects/rock-throw
-
-# Install for your user as a live link to this checkout
-omp plugin link /home/work/projects/rock-throw
-
-# Or install through the bundled marketplace catalog (.omp-plugin/marketplace.json)
-omp plugin marketplace add /home/work/projects/rock-throw
+# Install from GitHub (marketplace catalog in .omp-plugin/marketplace.json)
+omp plugin marketplace add TheRockPusher/rock-throw
 omp plugin install rock-throw@rock-throw
+
+# Try a local checkout without installing (this session only)
+omp -e /path/to/rock-throw
+
+# Or install a local checkout as a live link
+omp plugin link /path/to/rock-throw
 ```
 
 With the live link, edits to the checkout take effect after `/reload-plugins` or a restart. Install only one way at a time; a link and a marketplace copy with the same name collide.
