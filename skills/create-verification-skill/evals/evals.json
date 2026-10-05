@@ -1,0 +1,58 @@
+{
+  "skill_name": "create-verification-skill",
+  "evals": [
+    {
+      "id": 1,
+      "name": "notes-web-app",
+      "prompt": "The input files are our notes web app repo. Copy them into your working directory and treat that as the repo root. Agents keep changing this app without ever checking it in a running instance - set up a project verification skill in the repo so future agents can launch it and prove features actually work.",
+      "expected_output": "<repo>/.omp/skills/verify-notes/ (or similar) with a SKILL.md covering launch on an isolated port and scratch NOTES_DB, doctor via /healthz, browser or HTTP drive recipes with real labels/routes, evidence and cleanup; a features/ map; and a recorded end-to-end proof run.",
+      "files": ["evals/files/notes-web/app.py", "evals/files/notes-web/README.md"],
+      "assertions": [
+        "A verification skill exists at <repo>/.omp/skills/<dir>/SKILL.md whose YAML frontmatter parses, with name equal to <dir> and a description naming the app",
+        "SKILL.md gives Launch (exact command and ready signal), Doctor, Drive, Evidence, and Cleanup instructions using this repo's real commands, routes, and labels, with no unfilled placeholders",
+        "features/README.md indexes at least 3 feature files, and every feature file has the H2s Sub-features, How to get to it (user POV), Driving it with <harness>, Gotchas in that order",
+        "Cleanup stops only what the run started (named service or recorded PID), never kills by process name (pkill/killall/fuser -k), and keeps the evidence directory",
+        "Launch isolates state: it sets NOTES_DB to a scratch path and chooses a non-default or free PORT, so verification never writes notes.db in the repo root",
+        "The executor ran the generated skill end to end (launch, doctor, one feature driven, cleanup) and the transcript shows evidence files still present after cleanup",
+        "Cold replay: a fresh agent following only the generated SKILL.md and one feature file launches the app, passes doctor, reaches the documented end state, and cleanup leaves no started process running",
+        "Full-map replay: every feature recipe in the map, run exactly as written against one fresh launch, reaches its documented result, or the recipe is explicitly marked unverified"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "tasklet-cli",
+      "prompt": "Input files are tasklet, my little todo CLI. Copy them into your working directory as the repo root. Make a verification skill for this repo so an agent can prove a change works by actually using the CLI, including the interactive shell mode.",
+      "expected_output": "<repo>/.omp/skills/verify-tasklet/ with a SKILL.md that runs every command with TASKLET_HOME set to a scratch dir, drives the CLI and the interactive shell through a PTY, captures command/stdout/stderr/exit code and stored tasks.json as evidence, and a features/ map; plus a recorded proof run.",
+      "files": ["evals/files/tasklet-cli/tasklet.py", "evals/files/tasklet-cli/README.md"],
+      "assertions": [
+        "A verification skill exists at <repo>/.omp/skills/<dir>/SKILL.md whose YAML frontmatter parses, with name equal to <dir> and a description naming the app",
+        "SKILL.md gives Launch, Doctor, Drive, Evidence, and Cleanup instructions using this repo's real commands and output strings, with no unfilled placeholders",
+        "features/README.md indexes at least 3 feature files, and every feature file has the H2s Sub-features, How to get to it (user POV), Driving it with <harness>, Gotchas in that order",
+        "Every documented verification command resolves tasklet storage inside a per-run scratch directory (via TASKLET_HOME or a scratch HOME), and no command in the transcript could read or write the user's ~/.tasklet",
+        "The feature map covers the interactive shell mode with a PTY-based recipe (prompt 'tasklet> ') and an observable result",
+        "Evidence for a mutation includes the command, exit code, and a second view of stored state (list output or tasks.json)",
+        "The executor ran the generated skill end to end (doctor, one feature driven, cleanup) and the transcript shows evidence files still present after cleanup",
+        "Cold replay: a fresh agent following only the generated SKILL.md and one feature file reaches the documented end state, and cleanup removes scratch state but keeps evidence",
+        "Full-map replay: every feature recipe in the map, run exactly as written in one fresh scratch setup, reaches its documented result, or the recipe is explicitly marked unverified"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "linkshort-api-broken-start",
+      "prompt": "Input files are the linkshort service repo. Copy them into your working directory as the repo root. Create a verification skill for it so agents can prove API changes end-to-end against a running server.",
+      "expected_output": "Executor discovers startup fails on the missing static/ dir, handles it as marked verification scaffolding removed in cleanup (or documents it precisely); <repo>/.omp/skills/verify-linkshort/ with isolated LINKSHORT_PORT/LINKSHORT_DATA, doctor via /api/health, curl recipes for create/redirect/stats/delete, evidence and cleanup; features/ map; recorded proof run.",
+      "files": ["evals/files/linkshort-api/server.py", "evals/files/linkshort-api/README.md", "evals/files/linkshort-api/requirements.txt"],
+      "assertions": [
+        "A verification skill exists at <repo>/.omp/skills/<dir>/SKILL.md whose YAML frontmatter parses, with name equal to <dir> and a description naming the app",
+        "SKILL.md gives Launch (exact command and ready signal), Doctor, Drive, Evidence, and Cleanup instructions using this repo's real endpoints and env vars, with no unfilled placeholders",
+        "features/README.md indexes at least 3 feature files, and every feature file has the H2s Sub-features, How to get to it (user POV), Driving it with <harness>, Gotchas in that order",
+        "The missing static/ startup blocker is handled: the skill creates it only as clearly marked verification scaffolding that cleanup removes (or states the exact precondition), without modifying server.py",
+        "Launch isolates state with LINKSHORT_DATA on a scratch path and a non-default or free LINKSHORT_PORT; cleanup stops only the started process, never by process name",
+        "The redirect proof checks the side effect from a second view (stats clicks incremented), not just the 302",
+        "The executor ran the generated skill end to end (launch, doctor, one feature driven, cleanup) and the transcript shows evidence files still present after cleanup",
+        "Cold replay: a fresh agent following only the generated SKILL.md and one feature file launches the app, passes doctor, reaches the documented end state, and cleanup leaves no started process running",
+        "Full-map replay: every feature recipe in the map, run exactly as written against one fresh launch, reaches its documented result, or the recipe is explicitly marked unverified"
+      ]
+    }
+  ]
+}

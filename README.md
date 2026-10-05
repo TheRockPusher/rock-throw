@@ -7,6 +7,7 @@ A personal skill collection, packaged as an [Oh My Pi](https://github.com/can135
 | Skill | Invoke | What it does |
 |---|---|---|
 | [skill-forge](skills/skill-forge/SKILL.md) | `/skill:skill-forge <request>` | Creates, improves, and evaluates OMP skills. Drafts SKILL.md, runs paired with/without-skill evals, opens a review page, and tunes descriptions. OMP-native port of Anthropic's `skill-creator`. |
+| [create-verification-skill](skills/create-verification-skill/SKILL.md) | `/skill:create-verification-skill [repo or focus]` | Generates a project-local `.omp/skills/verify-<app>/` skill (launch, doctor, drive, evidence, cleanup, feature map) and proves it by running it. Adapted from pstack's [`create-verification-skill`](https://github.com/cursor/plugins/tree/main/pstack/skills/create-verification-skill). |
 
 ## Conventions
 
